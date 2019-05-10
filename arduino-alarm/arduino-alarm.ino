@@ -1,4 +1,11 @@
 #include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <ArduinoJson.h>
+
+/* setup http request - begin */
+const char *host = "http://arduinojson.org/example.json";
+String success = "true";
+/* setup http request - end */
 
 /* setup wifi - begin */
 const char *ssid = "mywifissid";
@@ -70,8 +77,11 @@ void loop()
 
   request();
 
-  // Play music with lights on
-  play();
+  if (success.equals("false"))
+  {
+    // Play music with lights on
+    play();
+  }
 
   delay(5000);
 }
@@ -194,3 +204,55 @@ void play()
   delay(650);
 }
 /* buzzer logic - end */
+
+/* http request logic - begin */
+void request()
+{
+  HTTPClient http; // Declare object of class HTTPClient
+
+  Serial.print("Request Link:");
+  Serial.println(host);
+
+  http.begin(host); // Specify request destination
+
+  int httpCode = http.GET();         // Send the request
+  String payload = http.getString(); // Get the response payload from server
+
+  Serial.print("Response Code: "); // 200 is OK
+  Serial.println(httpCode);        // Print HTTP return code
+
+  // Serial.print("Returned data from Server:");
+  // Serial.println(payload);       // Print request response payload
+
+  if (httpCode == 200)
+  {
+    // Allocate JsonBuffer
+    DynamicJsonDocument doc(1024);
+
+    // Parse JSON object
+    auto error = deserializeJson(doc, payload);
+    if (error)
+    {
+      Serial.print(F("deserializeJson() failed with code "));
+      Serial.println(error.c_str());
+
+      return;
+    }
+
+    // Decode JSON/Extract values
+    Serial.println(F("Response: "));
+    Serial.println(doc["sensor"].as<char *>());
+
+    // Just a hardcoded value to test the feature, it should be replaced with the response value extracted as above
+    success = "false";
+  }
+  else
+  {
+    Serial.println("Error in response");
+  }
+
+  http.end(); // Close connection
+
+  delay(5000); // GET Data at every 5 seconds
+}
+/* http request logic - end */
